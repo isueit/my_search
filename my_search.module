@@ -1,0 +1,20 @@
+<?php
+
+/**
+ * Implements hook_form_alter
+ * Edit search field
+ */
+function apachesolr_search_form_alter(&$variables) {
+  debug("Edit search alter");
+  debug($variables);
+  $options = array(0 => t('Local'), 1 => t('Global'));
+  $variables['alter_results'] = array(
+    '#type' => 'radios',
+    '#options' => $options,
+  );
+  debug($variables);
+}
+
+function my_search_preprocess_search_results(&$variables) {
+  debug("Edit search results");
+}

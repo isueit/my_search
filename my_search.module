@@ -2,19 +2,36 @@
 
 /**
  * Implements hook_form_alter
- * Edit search field
+ * Edit search field to include terms
  */
 function apachesolr_search_form_alter(&$variables) {
-  debug("Edit search alter");
-  debug($variables);
-  $options = array(0 => t('Local'), 1 => t('Global'));
-  $variables['alter_results'] = array(
-    '#type' => 'radios',
-    '#options' => $options,
-  );
-  debug($variables);
+  $search_terms = explode('/', current_path());
+  $variables['search_block_form']['#default_value'] = $search_terms[count($search_terms)-1];
 }
 
+/**
+ * Implements hook_preprocess_hook()
+ */
 function my_search_preprocess_search_results(&$variables) {
   debug("Edit search results");
+  debug($variables);
+}
+function my_search_preprocess_search_result(&$variables) {
+  debug("Edit search result");
+  debug($variables);
+}
+function my_search_preprocess_apachesolr_search(&$variables) {
+  debug("Edit search apachesolr");
+  debug($variables);
+}
+function my_search_preprocess_search_block(&$variables) {
+  debug("Edit search block");
+  debug($variables);
+}
+function my_search_apachesolr_search_alter(&$variables) {
+  debug("Alter apache solr");
+}
+
+//Edits search form
+function my_search_preprocess_search_block_form(&$variables) {
 }

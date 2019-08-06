@@ -6,32 +6,36 @@
  */
 function apachesolr_search_form_alter(&$variables) {
   $search_terms = explode('/', current_path());
-  $variables['search_block_form']['#default_value'] = $search_terms[count($search_terms)-1];
+  //Only add if on search page
+  if ($search_terms[0] == 'search') {
+    $variables['search_block_form']['#default_value'] = $search_terms[count($search_terms)-1];
+  }
 }
 
 /**
- * Implements hook_preprocess_hook()
+ * Implements hook_form()
+ * Creates switching form for search page
  */
-function my_search_preprocess_search_results(&$variables) {
-  debug("Edit search results");
-  debug($variables);
-}
-function my_search_preprocess_search_result(&$variables) {
-  debug("Edit search result");
-  debug($variables);
-}
-function my_search_preprocess_apachesolr_search(&$variables) {
-  debug("Edit search apachesolr");
-  debug($variables);
-}
-function my_search_preprocess_search_block(&$variables) {
-  debug("Edit search block");
-  debug($variables);
-}
-function my_search_apachesolr_search_alter(&$variables) {
-  debug("Alter apache solr");
+function my_search_toggle_form($form, &$form_state) {
+  $options = array(t('MyExtension only'), t('All Extension Sites'));
+  $form['toggle'] = array(
+    '#type' => 'radios',
+    '#options' => $options,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Search'),
+  );
+  return $form;
 }
 
-//Edits search form
-function my_search_preprocess_search_block_form(&$variables) {
+/**
+ * Implements hook_page_alter()
+ * Add form into page
+ */
+function apachesolr_search_page_alter(&$page) {
+  //Called on all pages, only add when has search results section
+  if (isset($page['content']['system_main']['search_results'])) {
+    $page['content']['system_main']['toggle_search_width'] = drupal_get_form('my_search_toggle_form');
+  }
 }

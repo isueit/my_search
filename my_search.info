@@ -3,3 +3,4 @@ description = Adds selector to change scope of search results
 core = 7.x
 package = ISUEO
 version = 7.x-1.0
+dependencies[] = ISUEO:cse_selector

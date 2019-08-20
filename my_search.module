@@ -9,6 +9,21 @@ function apachesolr_search_form_alter(&$variables) {
   //Only add if on search page
   if ($search_terms[0] == 'search') {
     $variables['search_block_form']['#default_value'] = $search_terms[count($search_terms)-1];
+    $variables['search_broadness'] = [
+      '#type' => 'hidden',
+      '#default_value' => 'narrow',
+    ];
+  } elseif ($search_terms[0] == 'search-results') {
+    debug($variables);
+    $variables['search_block_form']['#default_value'] = drupal_get_query_parameters()[variable_get('cse_selector_url_text')];
+    $variables['#method'] = 'get';
+    $variables[variable_get('cse_selector_url_text')] = $variables['search_block_form'];
+    $variables['actions']['submit']['#name'] = "";
+    unset($variables['#form_id'], $variables['form_id'], $variables['#build_id'], $variables['form_build_id'], $variables['#token'], $variables['form_token'], $variables['search_block_form']);
+    $variables['search_broadness'] = [
+      '#type' => 'hidden',
+      '#default_value' => 'wide',
+    ];
   }
 }
 
@@ -20,12 +35,24 @@ function my_search_toggle_form($form, &$form_state) {
   $options = array(t('MyExtension only'), t('All Extension Sites'));
   $form['toggle'] = array(
     '#type' => 'radios',
-    '#options' => $options,
+    '#options' => array(
+      'narrow' => t(variable_get('cse_selector_narrow_search_text')),
+      'wide' => t(variable_get('cse_selector_wide_search_text'))
+    ),
+    '#attributes' => array('onchange' => 'add_param();form.submit("my-search-toggle-form");'),
   );
+  $form['#method'] = 'get';
+  $form['#action'] = '/search-results';
+  if (array_key_exists('search_broadness', drupal_get_query_parameters())) {
+    $form['toggle']['#default_value'] = drupal_get_query_parameters()['search_broadness'];
+  } else {
+    $form['toggle']['#default_value'] = variable_get('cse_selector_default_search_type');
+  }
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Search'),
   );
+  $form['#attached']['js'][] = drupal_get_path('module', 'my_search') . '/my_search.js';
   return $form;
 }
 

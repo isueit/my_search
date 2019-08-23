@@ -1,0 +1,16 @@
+<?php
+function my_search_install() {
+  variable_set('my_search_id_key', '014153082229948236703:4fobzs0gqdo');
+  variable_set('my_search_narrow_search_text', 'Search ' . variable_get('site_name')); //Sitename added
+  variable_set('my_search_wide_search_text', 'Search Public ISU Extension and Outreach Websites');
+  variable_set('my_search_url_text', 'as_q');
+  variable_set('my_search_results_page_name', 'mysearch-results');
+}
+
+function my_search_uninstall() {
+  variable_del('my_search_id_key');
+  variable_del('my_search_narrow_search_text');
+  variable_del('my_search_wide_search_text');
+  variable_del('my_search_url_text');
+  variable_del('my_search_results_page_name');
+}

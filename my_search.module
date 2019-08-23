@@ -1,4 +1,26 @@
 <?php
+/*
+ * Implements hook_menu()
+ */
+function my_search_menu() {
+  $items['admin/config/search/my_search'] = array(
+    'title' => 'Google Custom Search',
+    'description' => 'Google Custom Search',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('my_search_settings'),
+    'file' => 'my_search.admin.inc',
+    'access arguments' => array('administer'),
+  );
+  $items[variable_get('my_search_results_page_name')] = array(
+    'title' => 'Search Results',
+    'description' => 'Extension Search Results Page',
+    'page callback' => 'my_search_results_page',
+    'file' => 'my_search.module',
+    'access arguments' => array('access content'),
+  );
+  return $items;
+}
+
 
 /**
  * Implements hook_form_alter
@@ -6,34 +28,19 @@
  */
 function apachesolr_search_form_alter(&$variables) {
   $search_terms = explode('/', current_path());
-  //Only add if on search page
-  if ($search_terms[0] == 'search' && array_key_exists('search_block_form', $variables)) {
-    $variables['search_block_form']['#default_value'] = $search_terms[count($search_terms)-1];
-    $variables['search_broadness'] = [
-      '#type' => 'hidden',
-      '#default_value' => 'narrow',
-    ];
-  } elseif ($search_terms[0] == 'search' && array_key_exists('search_broadness', $variables)) {
-    $variables[variable_get('cse_selector_url_text')]['#default_value'] = $search_terms[count($search_terms)-1];
-    unset($variables['#form_id'], $variables['form_id'], $variables['#build_id'], $variables['form_build_id'], $variables['#token'], $variables['form_token'], $variables['search_block_form']);
-  } elseif ($search_terms[0] == 'search-results' && array_key_exists('search_block_form', $variables)) {
-    $variables['search_block_form']['#default_value'] = drupal_get_query_parameters()[variable_get('cse_selector_url_text')];
-    $variables['#method'] = 'get';
-    $variables[variable_get('cse_selector_url_text')] = $variables['search_block_form'];
-    $variables['actions']['submit']['#name'] = "";
-    unset($variables['#form_id'], $variables['form_id'], $variables['#build_id'], $variables['form_build_id'], $variables['#token'], $variables['form_token'], $variables['search_block_form']);
-    $variables['search_broadness'] = [
-      '#type' => 'hidden',
-      '#default_value' => 'wide',
-    ];
-  } elseif ($search_terms[0] == 'search-results' && $variables['#form_id'] == 'cse_selector_results_form') {
-    $variables['#method'] = 'post';
-    $variables['#action'] = '/search';
-    $variables['search_block_form'] = array(
-      '#type' => 'hidden',
-      '#default_value' => drupal_get_query_parameters()[variable_get('cse_selector_url_text')],
-    );
-    $variables[variable_get('cse_selector_url_text')]['#default_value'] = drupal_get_query_parameters()[variable_get('cse_selector_url_text')];
+
+  switch ([$search_terms[0], $variables['#form_id']]) {
+    case ['search', 'search_block_form']:
+      $variables['search_block_form']['#default_value'] = $search_terms[count($search_terms)-1];
+      break;
+
+    case ['search', 'my_search_get_form']:
+      $variables[variable_get('my_search_url_text')]['#default_value'] = $search_terms[count($search_terms)-1];
+      unset($variables['#form_id'], $variables['form_id'], $variables['#build_id'], $variables['form_build_id'], $variables['#token'], $variables['form_token']);
+      break;
+
+    case [variable_get('my_search_results_page_name'), 'search_block_form']:
+      $variables['search_block_form']['#default_value'] = drupal_get_query_parameters()[variable_get('my_search_url_text')];
   }
 }
 
@@ -42,30 +49,70 @@ function apachesolr_search_form_alter(&$variables) {
  * Creates switching form for search page
  */
 function my_search_toggle_form($form, &$form_state) {
-  $options = array(t('MyExtension only'), t('All Extension Sites'));
+  $form['#autocomplete'] = 'off';
   $form['search_broadness'] = array(
     '#type' => 'radios',
     '#options' => array(
-      'narrow' => t(variable_get('cse_selector_narrow_search_text')),
-      'wide' => t(variable_get('cse_selector_wide_search_text'))
+      'narrow' => t(variable_get('my_search_narrow_search_text')),
+      'wide' => t(variable_get('my_search_wide_search_text'))
     ),
-    '#attributes' => array('onchange' => 'add_param();form.submit("my-search-toggle-form");'),
+    '#attributes' => array(
+      'onchange' => 'document.getElementsByTagName("FORM")["my-search-get-form"].submit("my-search-get-form");',
+      'autocomplete' => 'off',
+    ),
     '#default_value' => 'narrow',
   );
-  $form[variable_get('cse_selector_url_text')] = array(
+  return $form;
+}
+
+/**
+ * Implements hook_form()
+ * Creates input form for get method
+ * Get submits all elements with values and names as parameters
+ */
+function my_search_get_form($form, &$form_state) {
+  $form[variable_get('my_search_url_text')] = array(
     '#type' => 'hidden',
   );
   $form['#method'] = 'get';
-  $form['#action'] = '/search-results';
+  $form['#action'] = '/' . variable_get('my_search_results_page_name');
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Search'),
     '#id' => 'search-submit-hidden',
     '#attributes' => ['style' => ['display: none']],
   );
-  $form['#attached']['js'][] = drupal_get_path('module', 'my_search') . '/my_search.js';
   return $form;
 }
+
+// // Single for has search_broadness param in url, better accessibility
+// function my_search_toggle_form($form, &$form_state) {
+//   $form['search_broadness'] = array(
+//     '#type' => 'radios',
+//     '#options' => array(
+//       'narrow' => t(variable_get('my_search_narrow_search_text')),
+//       'wide' => t(variable_get('my_search_wide_search_text'))
+//     ),
+//     '#attributes' => array(
+//       'onchange' => 'form.submit("my-search-toggle-form");',
+//       'autocomplete' => 'off',
+//     ),
+//     '#default_value' => 'narrow',
+//   );
+//   $form[variable_get('my_search_url_text')] = array(
+//     '#type' => 'hidden',
+//   );
+//   $form['#method'] = 'get';
+//   $form['#action'] = '/' . variable_get('my_search_results_page_name');
+//   $form['submit'] = array(
+//     '#type' => 'submit',
+//     '#value' => t('Search'),
+//     '#id' => 'search-submit-hidden',
+//     '#attributes' => ['style' => ['display: none']],
+//   );
+//   return $form;
+// }
+
 
 /**
  * Implements hook_page_alter()
@@ -75,5 +122,72 @@ function apachesolr_search_page_alter(&$page) {
   //Called on all pages, only add when has search results section
   if (isset($page['content']['system_main']['search_results'])) {
     $page['content']['system_main']['toggle_search_width'] = drupal_get_form('my_search_toggle_form');
+    $page['content']['system_main']['toggle_search_get'] = drupal_get_form('my_search_get_form');
+    drupal_page_is_cacheable(FALSE);
   }
+}
+
+/*
+ * Implementation of hook_form
+  * This contains width of search radios and the results box
+  * Submitting this form returns to solr search
+ */
+function my_search_results_form($form, &$form_state) {
+  $form['#method'] = 'post';
+  $form['#action'] = 'search/content/' . drupal_get_query_parameters()[variable_get('my_search_url_text')];
+  $form['#token'] = FALSE;
+  $form['#after_build'] = array('my_search_unset_default_form_elements');
+  $form['search']['search_broadness'] = array(
+    '#type' => 'radios',
+    '#options' => array(
+      'narrow' => t(variable_get('my_search_narrow_search_text')),
+      'wide' => t(variable_get('my_search_wide_search_text'))
+    ),
+    '#attributes' => array(
+      'onchange' => 'form.submit("my_search_results_form")',
+      'autocomplete' => 'off',
+    ),
+  );
+  $form['search']['search_broadness']['#default_value'] = 'wide';
+  if (array_key_exists(variable_get('my_search_url_text'), drupal_get_query_parameters())) {
+    $form['search']['search_block_form'] = array(
+      '#type' => 'hidden',
+      '#default_value' => drupal_get_query_parameters()[variable_get('my_search_url_text')],
+    );
+  }
+  $form['search']['search_submit']  = array(
+    '#type' => 'submit',
+    '#value' => t('Search'),
+    '#attributes' => array('id' => 'search_submit_hidden')
+  );
+  //Loads external JS file to connect with google api
+  $form['#attached']['js'][] = drupal_get_path('module', 'my_search') . '/my_search.js';
+  drupal_add_js(array(
+    'my_search' => array(
+      'my_search_js_id_key' => variable_get('my_search_id_key'))
+    ),
+    'setting'
+  );
+
+  $block = '';
+  $block .= '<script class="cse_script">
+    var cx="' . variable_get('my_search_id_key') . '";
+  document.onload = my_search_js_request();document.getElementById("search_submit_hidden").style.display="none";</script>';
+  $block .= '<div class="gcse-searchresults-only"';
+  $block .= ' data-resultsUrl="https://myextension.extension.iastate.edu' . base_path() . variable_get('my_search_results_page_name') . '"' ;
+  $block .= ' data-queryParameterName="' . variable_get('my_search_url_text') . '"';
+  $block .= '></div>';
+  $form['search']['google_results'] = array('#markup' => $block);
+   return $form;
+}
+
+function my_search_unset_default_form_elements($form) {
+  unset($form['#build_id'], $form['form_build_id'], $form['form_id']);
+  return $form;
+}
+
+function my_search_results_page() {
+  drupal_page_is_cacheable(FALSE);
+  $page['content'] = drupal_get_form('my_search_results_form');
+  return $page;
 }

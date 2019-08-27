@@ -26,7 +26,7 @@ function my_search_menu() {
  * Implements hook_form_alter
  * Edit search field to include terms
  */
-function apachesolr_search_form_alter(&$variables) {
+function my_search_form_alter(&$variables) {
   $search_terms = explode('/', current_path());
 
   switch ([$search_terms[0], $variables['#form_id']]) {
@@ -85,7 +85,9 @@ function my_search_get_form($form, &$form_state) {
   return $form;
 }
 
-// // Single for has search_broadness param in url, better accessibility
+// /**
+//  * Single form has search_broadness param in url, better accessibility as it only uses a single form
+// */
 // function my_search_toggle_form($form, &$form_state) {
 //   $form['search_broadness'] = array(
 //     '#type' => 'radios',
@@ -116,13 +118,12 @@ function my_search_get_form($form, &$form_state) {
 
 /**
  * Implements hook_page_alter()
- * Add form into page
+ * Add form into apache solr search form
  */
-function apachesolr_search_page_alter(&$page) {
+function my_search_page_alter(&$page) {
   //Called on all pages, only add when has search results section
   if (isset($page['content']['system_main']['search_results'])) {
-    $page['content']['system_main']['toggle_search_width'] = drupal_get_form('my_search_toggle_form');
-    $page['content']['system_main']['toggle_search_get'] = drupal_get_form('my_search_get_form');
+    $page['content']['system_main'] = ['toggle_search_width' => drupal_get_form('my_search_toggle_form'), 'toggle_search_get' => drupal_get_form('my_search_get_form')] + $page['content']['system_main'];
     drupal_page_is_cacheable(FALSE);
   }
 }
@@ -181,11 +182,18 @@ function my_search_results_form($form, &$form_state) {
    return $form;
 }
 
+/**
+ * Remove unneeded elements in forms using get method
+ */
 function my_search_unset_default_form_elements($form) {
   unset($form['#build_id'], $form['form_build_id'], $form['form_id']);
   return $form;
 }
 
+/**
+ * Implements hook_page()
+ * Creates google custom search page
+ */
 function my_search_results_page() {
   drupal_page_is_cacheable(FALSE);
   $page['content'] = drupal_get_form('my_search_results_form');
